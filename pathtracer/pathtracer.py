@@ -150,8 +150,8 @@ class Material:
             img_path = str(gltf_obj.path.joinpath(Path(image.uri)))
             print(image)
             self.textures.append(img_path)
-        images_bitmap = spy.Bitmap.read_multiple(paths=self.textures)
-        print()
+        # images_bitmap = spy.Bitmap.read_multiple(paths=self.textures)
+        # print()
 
 
 class Mesh:
@@ -450,11 +450,10 @@ class Stage:
         #     stage.add_instance(cube_mesh, cube_materials[i % len(cube_materials)], cube_transform)
 
         # Load GLTF file
+        gltf_path = "assets/DamagedHelmet/DamagedHelmet.gltf"
+        # gltf_path = "assets/sponza/sponza.gltf"
         gltf_obj = GLTF2().load(
-            # "assets/DamagedHelmet.gltf"
-            # "assets/sponza.glb"
-            # "assets/sponza/sponza.gltf"
-            str(Path(f"{str(EXAMPLE_DIR.parent)}/assets/DamagedHelmet/DamagedHelmet.gltf"))
+            str(Path(f"{str(EXAMPLE_DIR.parent)}/{gltf_path}"))
         )
         # GLTF Mesh
         gltf_mesh = Mesh.create_gltf_mesh(gltf=gltf_obj)
@@ -508,6 +507,11 @@ class Scene:
         self.device = device
 
         self.camera = stage.camera
+
+        # Preload textures
+        loader = spy.TextureLoader(device=device)
+        all_texture_paths = stage.materials[0].textures
+        all_textures = loader.load_textures(all_texture_paths)
 
         # Prepare material descriptors
         self.material_descs = [Scene.MaterialDesc(base_color=m.base_color) for m in stage.materials]
