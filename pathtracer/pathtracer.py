@@ -137,9 +137,21 @@ class CameraController:
 
 
 class Material:
-    def __init__(self, base_color: "spy.float3param" = spy.float3(0.5)):
+    def __init__(self, gltf_obj: GLTF2 = None, base_color: "spy.float3param" = spy.float3(0.5)):
         super().__init__()
         self.base_color = base_color
+        self.textures = []
+
+        if gltf_obj is not None:
+            self.load_gltf_material(gltf_obj)
+
+    def load_gltf_material(self, gltf_obj: GLTF2):
+        for image in gltf_obj.images:
+            img_path = str(gltf_obj.path.joinpath(Path(image.uri)))
+            print(image)
+            self.textures.append(img_path)
+        images_bitmap = spy.Bitmap.read_multiple(paths=self.textures)
+        print()
 
 
 class Mesh:
@@ -249,10 +261,7 @@ class Mesh:
         return Mesh(vertices, indices)
 
     @classmethod
-    def create_gltf_mesh(cls, filepath: str, size: "spy.float3param" = spy.float3(1)):
-        # 加载GLTF文件
-        gltf = GLTF2().load(filepath)
-
+    def create_gltf_mesh(cls, gltf: GLTF2, size: "spy.float3param" = spy.float3(1)):
         # 获取场景中的第一个mesh
         scene = gltf.scenes[gltf.scene]
         node = gltf.nodes[scene.nodes[0]]
@@ -440,12 +449,22 @@ class Stage:
         #     cube_transform = stage.add_transform(transform)
         #     stage.add_instance(cube_mesh, cube_materials[i % len(cube_materials)], cube_transform)
 
-        gltf_mesh = Mesh.create_gltf_mesh(
-            "../assets/sponza.glb"
+        # Load GLTF file
+        gltf_obj = GLTF2().load(
+            # "assets/DamagedHelmet.gltf"
+            # "assets/sponza.glb"
+            # "assets/sponza/sponza.gltf"
+            str(Path(f"{str(EXAMPLE_DIR.parent)}/assets/DamagedHelmet/DamagedHelmet.gltf"))
         )
+        # GLTF Mesh
+        gltf_mesh = Mesh.create_gltf_mesh(gltf=gltf_obj)
         gltf_mesh = stage.add_mesh(gltf_mesh)
-        gltf_material = stage.add_material(Material(base_color=spy.float3(1.0)))
+        # GLTF Material
+        gltf_material = Material(gltf_obj=gltf_obj, base_color=spy.float3(0.5))
+        gltf_material = stage.add_material(gltf_material)
+        # GLTF Transform
         gltf_transform = stage.add_transform(Transform())
+        # Append the GLTF mesh to scene
         stage.add_instance(mesh_id=gltf_mesh, material_id=gltf_material, transform_id=gltf_transform)
 
         return stage
