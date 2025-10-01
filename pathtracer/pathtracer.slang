@@ -102,7 +102,6 @@ struct Camera {
 
 struct MaterialDesc {
     float3 base_color;
-    int1 texture_albedo;
 };
 
 struct Vertex {
@@ -134,6 +133,8 @@ struct Scene {
     StructuredBuffer<uint> indices;
     StructuredBuffer<float4x4> transforms;
     StructuredBuffer<float4x4> inverse_transpose_transforms;
+    Texture2D<float4> g_texture_albedo;
+    SamplerState g_texture_sampler;
 
     Camera camera;
 
@@ -246,9 +247,12 @@ void rt_closest_hit(inout Path path, BuiltInTriangleIntersectionAttributes attri
     float3 wi = frame.to_local(-path.ray.dir);
     float pdf;
     float3 wo = diffuse_brdf_sample(wi, path.rng.next_2d(), pdf);
+
     MaterialDesc material = g_scene.get_material(hit);
-    float3 f = material.base_color * INV_PI;
-    f = f * float(material.texture_albedo);
+    float3 albedo = material.base_color;
+    albedo = g_scene.g_texture_albedo.SampleLevel(g_scene.g_texture_sampler, vertex.uv, 0).rgb;
+    float3 f = albedo * INV_PI;
+
     path.thp *= f * abs(dot(wo, frame.n)) / pdf;
     path.vertex_index++;
     path.ray = Ray(vertex.position + vertex.normal * 1e-6f, frame.to_global(wo));

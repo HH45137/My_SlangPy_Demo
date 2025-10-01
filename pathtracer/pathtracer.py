@@ -14,7 +14,6 @@ EXAMPLE_DIR = Path(__file__).parent
 
 USE_RAYTRACING_PIPELINE = True
 
-
 class Camera:
     def __init__(self):
         super().__init__()
@@ -141,7 +140,7 @@ class Material:
         super().__init__()
         self.base_color = base_color
         self.textures = []
-        self.texture_albedo = 0
+        self.texture_albedo = None
 
         if gltf_obj is not None:
             self.load_gltf_material(gltf_obj)
@@ -474,10 +473,15 @@ class Scene:
     @dataclass
     class MaterialDesc:
         base_color: spy.float3
-        texture_albedo: int
+        texture_albedo: spy.Texture
 
         def pack(self):
-            return struct.pack("fffi", self.base_color[0], self.base_color[1], self.base_color[2], self.texture_albedo)
+            return struct.pack(
+                "fff",
+                self.base_color[0],
+                self.base_color[1],
+                self.base_color[2]
+            )
 
     @dataclass
     class MeshDesc:
@@ -507,17 +511,37 @@ class Scene:
     def __init__(self, device: spy.Device, stage: Stage):
         super().__init__()
         self.device = device
-
         self.camera = stage.camera
+        self.textures = []
 
         # Preload textures
         loader = spy.TextureLoader(device=device)
         all_texture_paths = stage.materials[0].textures
-        all_textures = loader.load_textures(all_texture_paths)
-        texture_sampler = device.create_sampler()
+        self.textures = loader.load_textures(all_texture_paths)
+
+        # Create texture array
+        if self.textures:
+            self.texture_albedo = self.textures[0]
+        else:
+            self.texture_albedo = device.create_texture(
+                format=spy.Format.rgba8_unorm,
+                width=1,
+                height=1,
+                usage=spy.TextureUsage.shader_resource,
+                data=np.array([[[255, 255, 255, 255]]], dtype=np.uint8)
+            )
 
         # Prepare material descriptors
-        self.material_descs = [Scene.MaterialDesc(base_color=m.base_color, texture_albedo=m.texture_albedo) for m in stage.materials]
+        self.material_descs = []
+        self.material_descs = [Scene.MaterialDesc(
+            base_color=m.base_color,
+            texture_albedo=self.texture_albedo
+        ) for m in
+            stage.materials]
+
+        # Prepare texture sampler
+        self.texture_sampler = device.create_sampler()
+
         material_descs_data = np.frombuffer(
             b"".join(d.pack() for d in self.material_descs), dtype=np.uint8
         ).flatten()
@@ -704,6 +728,12 @@ class Scene:
         cursor["indices"] = self.index_buffer
         cursor["transforms"] = self.transform_buffer
         cursor["inverse_transpose_transforms"] = self.inverse_transpose_transforms_buffer
+
+        if hasattr(self, 'texture_albedo'):
+            cursor['g_texture_albedo'] = self.texture_albedo
+        if hasattr(self, 'texture_sampler'):
+            cursor['g_texture_sampler'] = self.texture_sampler
+
         self.camera.bind(cursor["camera"])
 
 
