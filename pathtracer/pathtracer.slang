@@ -102,6 +102,7 @@ struct Camera {
 
 struct MaterialDesc {
     float3 base_color;
+    int1 texture_albedo;
 };
 
 struct Vertex {
@@ -247,6 +248,7 @@ void rt_closest_hit(inout Path path, BuiltInTriangleIntersectionAttributes attri
     float3 wo = diffuse_brdf_sample(wi, path.rng.next_2d(), pdf);
     MaterialDesc material = g_scene.get_material(hit);
     float3 f = material.base_color * INV_PI;
+    f = f * float(material.texture_albedo);
     path.thp *= f * abs(dot(wo, frame.n)) / pdf;
     path.vertex_index++;
     path.ray = Ray(vertex.position + vertex.normal * 1e-6f, frame.to_global(wo));

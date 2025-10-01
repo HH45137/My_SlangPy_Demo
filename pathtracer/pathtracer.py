@@ -141,6 +141,7 @@ class Material:
         super().__init__()
         self.base_color = base_color
         self.textures = []
+        self.texture_albedo = 0
 
         if gltf_obj is not None:
             self.load_gltf_material(gltf_obj)
@@ -473,9 +474,10 @@ class Scene:
     @dataclass
     class MaterialDesc:
         base_color: spy.float3
+        texture_albedo: int
 
         def pack(self):
-            return struct.pack("fff", self.base_color[0], self.base_color[1], self.base_color[2])
+            return struct.pack("fffi", self.base_color[0], self.base_color[1], self.base_color[2], self.texture_albedo)
 
     @dataclass
     class MeshDesc:
@@ -512,9 +514,10 @@ class Scene:
         loader = spy.TextureLoader(device=device)
         all_texture_paths = stage.materials[0].textures
         all_textures = loader.load_textures(all_texture_paths)
+        texture_sampler = device.create_sampler()
 
         # Prepare material descriptors
-        self.material_descs = [Scene.MaterialDesc(base_color=m.base_color) for m in stage.materials]
+        self.material_descs = [Scene.MaterialDesc(base_color=m.base_color, texture_albedo=m.texture_albedo) for m in stage.materials]
         material_descs_data = np.frombuffer(
             b"".join(d.pack() for d in self.material_descs), dtype=np.uint8
         ).flatten()
