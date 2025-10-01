@@ -14,6 +14,7 @@ EXAMPLE_DIR = Path(__file__).parent
 
 USE_RAYTRACING_PIPELINE = True
 
+
 class Camera:
     def __init__(self):
         super().__init__()
@@ -146,12 +147,20 @@ class Material:
             self.load_gltf_material(gltf_obj)
 
     def load_gltf_material(self, gltf_obj: GLTF2):
+        # Get all textures
         for image in gltf_obj.images:
             img_path = str(gltf_obj.path.joinpath(Path(image.uri)))
             print(image)
             self.textures.append(img_path)
-        # images_bitmap = spy.Bitmap.read_multiple(paths=self.textures)
-        # print()
+
+        # Get albedo texture
+        for material in gltf_obj.materials or []:
+            if material.pbrMetallicRoughness and material.pbrMetallicRoughness.baseColorTexture:
+                texture_index = material.pbrMetallicRoughness.baseColorTexture.index
+                image_index = gltf_obj.textures[texture_index].source
+                image = gltf_obj.images[image_index]
+                self.texture_albedo = str(gltf_obj.path.joinpath(Path(image.uri)))
+                # print(self.texture_albedo)
 
 
 class Mesh:
@@ -521,7 +530,10 @@ class Scene:
 
         # Create texture array
         if self.textures:
-            self.texture_albedo = self.textures[0]
+            if stage.materials[0].texture_albedo in all_texture_paths:
+                self.texture_albedo = loader.load_texture(stage.materials[0].texture_albedo)
+            else:
+                self.texture_albedo = self.textures[0]
         else:
             self.texture_albedo = device.create_texture(
                 format=spy.Format.rgba8_unorm,
